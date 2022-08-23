@@ -1,13 +1,83 @@
+from ast import Bytes
 import os
 import re
 import json
 import unittest
 import subprocess
 from typing import (
-    Any, Dict, Generator, List, Optional, Tuple, Union,
+    Any, Dict, Generator, Tuple
 )
 
-SOURCE_DIR = "source_dir/"
+SOURCE_DIR = os.getenv("SOURCE_DIR", default="src/")
+
+def run_student_file(file_name: str, arguments: list[str] = [],
+                     seed: int | None = None,
+                     open_files: bool = False) -> str:
+    """
+        Run a file in a subprocess.
+        The function returns a string representation of
+        the stdout values from the subprocess.
+    """
+    cmd = 'python '
+
+    if seed is not None or open_files:
+        cmd += f"-c \"fopen=open;"
+        # Execute the file with a set `random` seed
+        if seed is not None:
+            cmd += f"import random;random.seed({seed});"
+        # Make sure the function `open` refers to SOURCE_DIR
+        if open_files:
+            cmd += f"open=(lambda fname, *args, **kwargs: fopen('{SOURCE_DIR}'+fname, *args, **kwargs));"
+        cmd += f"exec(fopen('{SOURCE_DIR}{file_name}').read())\""
+    else:
+        cmd += f"{SOURCE_DIR}{file_name}"
+
+    print("The COMMAND:", cmd)
+    # Start the process
+    proc = subprocess.Popen(cmd,
+                            shell=True, stdout=subprocess.PIPE,
+                            stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    for argument in arguments:
+        if proc.stdin:
+            proc.stdin.write(argument.encode('ascii') + b"\n")
+            proc.stdin.flush()
+
+    proc.wait()
+
+    def read_and_close(stream) -> str:
+        """
+        Read the stream and close it.
+        """
+        try: # Try to read the stream
+            output = stream.read().decode('ascii')
+            return output
+        except: # Stream is unreadable
+            return ""
+        finally:
+            stream.close()
+
+    stderr = read_and_close(proc.stderr)
+    stdout = read_and_close(proc.stdout)
+    read_and_close(proc.stdin)
+
+    if proc.stdin:
+        proc.stdin.close()
+    
+    returncode = str(proc.returncode)
+
+    if stderr:
+        raise RuntimeError(f"Program encountered an error during runtime exit code [{returncode}] stdout [{stdout}] stderr [{stderr}]")
+
+    return stdout.lower() # convert to lowercase for easier comparison
+
+
+# def run_student_file(file_name: str, arguments: List[str] = [],
+#                      seed: Union[int, None] = None,
+#                      open_files: bool = False) -> str:
+    
+#     return ""
+
 
 def lint_jupyter_notebook(file_name):
     """
@@ -222,7 +292,7 @@ def lint_jupyter_notebook(file_name):
         regex = r"(?:(?:(?:from [\w.\-]+)?\s*import (?:(?:(?:(?: *[\w.\-]+(?: as [\w.\-]+)?),? *)+)|(?:\(\s*)(?:(?:(?: *[\w.\-]+(?: as [\w.\-]+)?),?\s*)+)(?:\s*\))|(?:\*))|(?:#[^\n]+)|(?:\"\"\"(?:.+)\"\"\")|(?:[A-Z][A-Z_\-]*\s*=\s*(?:\d+|(?:\"[^\"]+\")|(?:\'[^\']+\')|(?:\"\"\"[^(?:\"\"\")]+\"\"\"))))\s*)+"
         return re.fullmatch(regex, code.strip()) is not None
 
-    def look_for_necessary(current_modules : List[Any], looking_for_mod : str) -> Generator[Dict[str, Union[int, str, List[Any]]], None, None]:
+    def look_for_necessary(current_modules : list[Any], looking_for_mod : str) -> Generator[Dict[str, int | str | list[Any]], None, None]:
         """
             Look for modules that use a certain module.
             Yield all paths towards blocks using the module.
@@ -242,7 +312,7 @@ def lint_jupyter_notebook(file_name):
             Determine the longest path that can be made
             while still covering all relevant nodes.
         """
-        longest_path: Union[List[Dict], None] = None
+        longest_path: list[Dict] | None = None
 
         for path in look_for_necessary(document, given_module):
             if longest_path is None:
@@ -256,7 +326,7 @@ def lint_jupyter_notebook(file_name):
 
         return longest_path
 
-    def open_notebook(notebook) -> Tuple[List[Dict[str, Union[str, int, List[Any]]]], List[str]]:
+    def open_notebook(notebook) -> Tuple[list[Dict[str, str | int | list[Any]]], list[str]]:
         """
             Open the Jupyter Notebook and extract
             the relevant blocks in a useful format.

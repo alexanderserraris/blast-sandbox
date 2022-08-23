@@ -3,7 +3,6 @@ import testUtils
 import sys
 
 file = sys.argv[1]
-print("Testing file: " + file)
 
 @testUtils.lint_jupyter_notebook(f"{file}.ipynb")
 class TestStudentCode(unittest.TestCase):
