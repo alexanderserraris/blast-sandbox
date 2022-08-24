@@ -1,8 +1,5 @@
-import os
 import unittest
-import json
 import testUtils
-
 
 class TestStudentCode(unittest.TestCase):
 
