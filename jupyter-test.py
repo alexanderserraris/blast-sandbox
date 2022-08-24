@@ -2,12 +2,10 @@ import unittest
 import testUtils
 import sys
 
-file = sys.argv[1]
-
-@testUtils.lint_jupyter_notebook(f"{file}.ipynb")
+@testUtils.lint_jupyter_notebook(f"OK.ipynb") # looks in `src` folder for this file
 class TestStudentCode(unittest.TestCase):
     pass
 
 
 if __name__ == '__main__':
-    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+    unittest.main()
