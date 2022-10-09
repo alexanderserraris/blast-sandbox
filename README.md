@@ -5,8 +5,11 @@ PHP tests with PHPUnit, NodeJS tests with Jasmine, Python and Jupyter Notebook (
 
 ## Requirements
 > Python 3.10+
+
 > PHP 8.1+
+
 > Composer 2.2+
+
 > Node.js v18+
 
 
