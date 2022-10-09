@@ -275,7 +275,7 @@ def lint_jupyter_notebook(file_name):
             r"(?:from [\w.\-]+)?\s*import (?:((?:(?: *[\w.\-]+(?: as [\w.\-]+)?),? *)+)|(?:\(\s*)((?:(?: *[\w.\-]+(?: as [\w.\-]+)?),?\s*)+)(?:\s*\))|(?:\*))",
             code
         )
-
+        
         for line in discovered:
             for option in line:
                 for mod in re.findall(
@@ -285,10 +285,11 @@ def lint_jupyter_notebook(file_name):
                         if len(result) > 0 and result != "*":
                             yield result
 
-    def is_code_block(code : str) -> bool:
+    def is_code_block(code : str) -> bool: # checkt code block, als een import wordt gevonden, matcht ie verder om te kijken naar de imports
         """
             Determine whether a code block is considered a "code" block.
         """
+        print(code.strip())
         regex = r"(?:(?:(?:from [\w.\-]+)?\s*import (?:(?:(?:(?: *[\w.\-]+(?: as [\w.\-]+)?),? *)+)|(?:\(\s*)(?:(?:(?: *[\w.\-]+(?: as [\w.\-]+)?),?\s*)+)(?:\s*\))|(?:\*))|(?:#[^\n]+)|(?:\"\"\"(?:.+)\"\"\")|(?:[A-Z][A-Z_\-]*\s*=\s*(?:\d+|(?:\"[^\"]+\")|(?:\'[^\']+\')|(?:\"\"\"[^(?:\"\"\")]+\"\"\"))))\s*)+"
         return re.fullmatch(regex, code.strip()) is not None
 
@@ -389,6 +390,7 @@ def lint_jupyter_notebook(file_name):
         for header in unnested_cells:
             for code in header['code']:
                 if not is_code_block(code):
+                    print("not code block")
                     for module in modules:
                         if module in code:
                             header['uses_imports'].append(module)

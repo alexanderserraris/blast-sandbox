@@ -2,7 +2,7 @@ import unittest
 import testUtils
 import sys
 
-@testUtils.lint_jupyter_notebook(f"OK.ipynb") # looks in `src` folder for this file
+@testUtils.lint_jupyter_notebook(f"rent.ipynb") # looks in `src` folder for this file
 class TestStudentCode(unittest.TestCase):
     pass
 
