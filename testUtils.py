@@ -1,18 +1,18 @@
-from ast import Bytes
 import os
 import re
 import json
 import unittest
 import subprocess
 from typing import (
-    Any, Dict, Generator, Tuple
+    Any, Dict, Generator, List, Optional, Tuple, Union,
 )
 
-SOURCE_DIR = os.getenv("SOURCE_DIR", default="src/")
+def run_formatter():
+    os.system('black -l 500 ' + os.getenv("SOURCE_DIR"))
 
-def run_student_file(file_name: str, arguments: list[str] = [],
-                     seed: int | None = None,
-                     open_files: bool = False) -> str:
+def run_student_file(file_name: str, arguments: Optional[List[str]] = [],
+                     seed: Optional[Union[int, None]] = None,
+                     open_files: Optional[bool] = False) -> str:
     """
         Run a file in a subprocess.
         The function returns a string representation of
@@ -27,57 +27,29 @@ def run_student_file(file_name: str, arguments: list[str] = [],
             cmd += f"import random;random.seed({seed});"
         # Make sure the function `open` refers to SOURCE_DIR
         if open_files:
-            cmd += f"open=(lambda fname, *args, **kwargs: fopen('{SOURCE_DIR}'+fname, *args, **kwargs));"
-        cmd += f"exec(fopen('{SOURCE_DIR}{file_name}').read())\""
+            cmd += f"open=(lambda fname, *args, **kwargs: fopen('{os.getenv('SOURCE_DIR')}'+fname, *args, **kwargs));"
+        cmd += f"exec(fopen('{os.getenv('SOURCE_DIR')}{file_name}').read())\""
     else:
-        cmd += f"{SOURCE_DIR}{file_name}"
+        cmd += f"{os.getenv('SOURCE_DIR')}{file_name}"
 
-    print("The COMMAND:", cmd)
     # Start the process
     proc = subprocess.Popen(cmd,
                             shell=True, stdout=subprocess.PIPE,
                             stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
     for argument in arguments:
-        if proc.stdin:
-            proc.stdin.write(argument.encode('ascii') + b"\n")
-            proc.stdin.flush()
+        proc.stdin.write(argument.encode('ascii') + b"\n")
+        proc.stdin.flush()
 
     proc.wait()
 
-    def read_and_close(stream) -> str:
-        """
-        Read the stream and close it.
-        """
-        try: # Try to read the stream
-            output = stream.read().decode('ascii')
-            return output
-        except: # Stream is unreadable
-            return ""
-        finally:
-            stream.close()
-
-    stderr = read_and_close(proc.stderr)
-    stdout = read_and_close(proc.stdout)
-    read_and_close(proc.stdin)
-
-    if proc.stdin:
-        proc.stdin.close()
-    
-    returncode = str(proc.returncode)
-
-    if stderr:
-        raise RuntimeError(f"Program encountered an error during runtime exit code [{returncode}] stdout [{stdout}] stderr [{stderr}]")
-
-    return stdout.lower() # convert to lowercase for easier comparison
-
-
-# def run_student_file(file_name: str, arguments: List[str] = [],
-#                      seed: Union[int, None] = None,
-#                      open_files: bool = False) -> str:
-    
-#     return ""
-
+    stderr = proc.stderr.read()
+    # Give output - either an error or the terminal stdout
+    if len(stderr) > 0:
+        raise RuntimeError(
+            "Program encountered an error during runtime exit code [" + str(proc.returncode) + "] stdout [" + str(proc.stdout.read()) + "] stderr [" + str(stderr) + "]"
+        )
+    return str(proc.stdout.read()).lower()
 
 def lint_jupyter_notebook(file_name):
     """
@@ -254,14 +226,14 @@ def lint_jupyter_notebook(file_name):
 
         return test_object
 
-    def load_notebook(file_name: str = file_name,
-                      nested_format: bool = False) -> Dict[str, Any]:
+    def load_notebook(file_name: Optional[str] = file_name,
+                      nested_format: Optional[bool] = False) -> Dict[str, Any]:
         """
             Load a Jupyter Notebook as if it were a JSON formatted file.
             If `nested_format` is True, the Jupyter Notebook is formatted
             in a way where
         """
-        with open(SOURCE_DIR + file_name, 'r', encoding='utf-8') as open_file:
+        with open(os.getenv('SOURCE_DIR') + file_name, 'r', encoding='utf-8') as open_file:
             n = json.load(open_file)
 
         return n if not nested_format else n  # TODO: Format Notebook nicely
@@ -275,7 +247,7 @@ def lint_jupyter_notebook(file_name):
             r"(?:from [\w.\-]+)?\s*import (?:((?:(?: *[\w.\-]+(?: as [\w.\-]+)?),? *)+)|(?:\(\s*)((?:(?: *[\w.\-]+(?: as [\w.\-]+)?),?\s*)+)(?:\s*\))|(?:\*))",
             code
         )
-        
+
         for line in discovered:
             for option in line:
                 for mod in re.findall(
@@ -285,15 +257,16 @@ def lint_jupyter_notebook(file_name):
                         if len(result) > 0 and result != "*":
                             yield result
 
-    def is_code_block(code : str) -> bool: # checkt code block, als een import wordt gevonden, matcht ie verder om te kijken naar de imports
+    def is_code_block(code : str) -> bool:
         """
             Determine whether a code block is considered a "code" block.
         """
-        print(code.strip())
-        regex = r"(?:(?:(?:from [\w.\-]+)?\s*import (?:(?:(?:(?: *[\w.\-]+(?: as [\w.\-]+)?),? *)+)|(?:\(\s*)(?:(?:(?: *[\w.\-]+(?: as [\w.\-]+)?),?\s*)+)(?:\s*\))|(?:\*))|(?:#[^\n]+)|(?:\"\"\"(?:.+)\"\"\")|(?:[A-Z][A-Z_\-]*\s*=\s*(?:\d+|(?:\"[^\"]+\")|(?:\'[^\']+\')|(?:\"\"\"[^(?:\"\"\")]+\"\"\"))))\s*)+"
-        return re.fullmatch(regex, code.strip()) is not None
+        return re.fullmatch(
+            r"(?:(?:(?:from [\w.\-]+)?\s*import (?:(?:(?:(?: *[\w.\-]+(?: as [\w.\-]+)?),? *)+)|(?:\(\s*)(?:(?:(?: *[\w.\-]+(?: as [\w.\-]+)?),?\s*)+)(?:\s*\))|(?:\*))|(?:#[^\n]+)|(?:\"\"\"(?:.+)\"\"\")|(?:[A-Z][A-Z_\-]*\s*=\s*(?:\d+|(?:\"[^\"]+\")|(?:\'[^\']+\')|(?:\"\"\"[^(?:\"\"\")]+\"\"\"))))\s*)+",
+            code.strip()
+        )
 
-    def look_for_necessary(current_modules : list[Any], looking_for_mod : str) -> Generator[Dict[str, int | str | list[Any]], None, None]:
+    def look_for_necessary(current_modules : List[Any], looking_for_mod : str) -> Generator[Dict[str, Union[int, str, List[Any]]], None, None]:
         """
             Look for modules that use a certain module.
             Yield all paths towards blocks using the module.
@@ -301,7 +274,7 @@ def lint_jupyter_notebook(file_name):
         cursor = current_modules[-1]
 
         if looking_for_mod in cursor['uses_imports']:
-            yield current_modules  # type: ignore
+            yield current_modules
         else:
             for child in cursor['children']:
                 yield from look_for_necessary(
@@ -313,21 +286,21 @@ def lint_jupyter_notebook(file_name):
             Determine the longest path that can be made
             while still covering all relevant nodes.
         """
-        longest_path: list[Dict] | None = None
+        longest_path: Union[List[Dict], None] = None
 
         for path in look_for_necessary(document, given_module):
             if longest_path is None:
-                longest_path = path  # type: ignore
+                longest_path = path
             else:
                 # Evaluate the longest subpath that is still the same
                 for i in range(len(longest_path)):
-                    if longest_path[i] != path[i]:  # type: ignore
+                    if longest_path[i] != path[i]:
                         longest_path = longest_path[:i]
                         break
 
         return longest_path
 
-    def open_notebook(notebook) -> Tuple[list[Dict[str, str | int | list[Any]]], list[str]]:
+    def open_notebook(notebook) -> Tuple[List[Dict[str, Union[str, int, List[Any]]]], List[str]]:
         """
             Open the Jupyter Notebook and extract
             the relevant blocks in a useful format.
@@ -390,7 +363,6 @@ def lint_jupyter_notebook(file_name):
         for header in unnested_cells:
             for code in header['code']:
                 if not is_code_block(code):
-                    print("not code block")
                     for module in modules:
                         if module in code:
                             header['uses_imports'].append(module)
