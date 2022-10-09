@@ -1,17 +1,24 @@
-# BLAST Playground - Bit Academy
+# BLAST Sandbox - Bit Academy
 
 Execute BLAST tests locally for education development. Currently supporting 
-PHP tests with PHPUnit, NodeJS tests with Jasmine, python and Jupyter Notebook (Python) tests with unittest.
+PHP tests with PHPUnit, NodeJS tests with Jasmine, Python and Jupyter Notebook (Python) tests with unittest.
+
+## Requirements
+> Python 3.10+
+> PHP 8.1+
+> Composer 2.2+
+> Node.js v18+
+
 
 ## Installation
 ```shell
-git clone https://github.com/robbplo/blast-playground
-cd blast-playground
+git clone https://github.com/alexanderserraris/blast-sandbox.git
+cd blast-sandbox
 composer install
 npm install
 ```
 
-## Usage
+## PHP / JavaScript Usage
 
 Write your PHP tests in `tests/php/BLASTTest.php`. Any files used by the 
 tests can be placed in `tests/php/source_dir`. The same goes for JavaScript, 
@@ -22,18 +29,7 @@ command `composer run test`. To execute Node tests, use command `npm run test`.
 There is one test file for each language. You are expected to write your 
 tests in this file, make sure they work correctly, and then move the test 
 source code over to Notion.
-
-# Python
-## Requirements
-> Python 3.10+
-
-## Installation
-```shell
-git clone https://github.com/alexanderserraris/python-jupyter-test
-cd blast-jupyter-linter
-```
-
-## Usage
+## Python / Jupyter Notebook Usage
 ### Python tests
 - Write the test in `python-test.py`
 - Place the python file to be tested in the `src` folder
