@@ -7,8 +7,10 @@ from typing import (
     Any, Dict, Generator, List, Optional, Tuple, Union,
 )
 
+SOURCE_DIR = os.getenv('SOURCE_DIR', default='src/')
+
 def run_formatter():
-    os.system('black -l 500 ' + os.getenv("SOURCE_DIR"))
+    os.system('black -l 500 ' + SOURCE_DIR)
 
 def run_student_file(file_name: str, arguments: Optional[List[str]] = [],
                      seed: Optional[Union[int, None]] = None,
@@ -18,7 +20,7 @@ def run_student_file(file_name: str, arguments: Optional[List[str]] = [],
         The function returns a string representation of
         the stdout values from the subprocess.
     """
-    cmd = 'python '
+    cmd = 'python3 '
 
     if seed is not None or open_files:
         cmd += f"-c \"fopen=open;"
@@ -27,10 +29,10 @@ def run_student_file(file_name: str, arguments: Optional[List[str]] = [],
             cmd += f"import random;random.seed({seed});"
         # Make sure the function `open` refers to SOURCE_DIR
         if open_files:
-            cmd += f"open=(lambda fname, *args, **kwargs: fopen('{os.getenv('SOURCE_DIR')}'+fname, *args, **kwargs));"
-        cmd += f"exec(fopen('{os.getenv('SOURCE_DIR')}{file_name}').read())\""
+            cmd += f"open=(lambda fname, *args, **kwargs: fopen('{SOURCE_DIR}'+fname, *args, **kwargs));"
+        cmd += f"exec(fopen('{SOURCE_DIR}{file_name}').read())\""
     else:
-        cmd += f"{os.getenv('SOURCE_DIR')}{file_name}"
+        cmd += f"{SOURCE_DIR}{file_name}"
 
     # Start the process
     proc = subprocess.Popen(cmd,
@@ -40,16 +42,21 @@ def run_student_file(file_name: str, arguments: Optional[List[str]] = [],
     for argument in arguments:
         proc.stdin.write(argument.encode('ascii') + b"\n")
         proc.stdin.flush()
+    
+    proc.stdin.close()
 
     proc.wait()
 
     stderr = proc.stderr.read()
+    proc.stderr.close()
     # Give output - either an error or the terminal stdout
     if len(stderr) > 0:
         raise RuntimeError(
             "Program encountered an error during runtime exit code [" + str(proc.returncode) + "] stdout [" + str(proc.stdout.read()) + "] stderr [" + str(stderr) + "]"
         )
-    return str(proc.stdout.read()).lower()
+    stdout = proc.stdout.read()
+    proc.stdout.close()
+    return str(stdout).lower()
 
 def lint_jupyter_notebook(file_name):
     """
@@ -233,7 +240,7 @@ def lint_jupyter_notebook(file_name):
             If `nested_format` is True, the Jupyter Notebook is formatted
             in a way where
         """
-        with open(os.getenv('SOURCE_DIR') + file_name, 'r', encoding='utf-8') as open_file:
+        with open(SOURCE_DIR + file_name, 'r', encoding='utf-8') as open_file:
             n = json.load(open_file)
 
         return n if not nested_format else n  # TODO: Format Notebook nicely
