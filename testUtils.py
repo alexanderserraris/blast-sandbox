@@ -8,6 +8,7 @@ from typing import (
 )
 
 SOURCE_DIR = os.getenv('SOURCE_DIR', default='src/')
+PYTHON_COMMAND = "python" # use command for your python 3.10+ version
 
 def run_formatter():
     os.system('black -l 500 ' + SOURCE_DIR)
@@ -20,7 +21,7 @@ def run_student_file(file_name: str, arguments: Optional[List[str]] = [],
         The function returns a string representation of
         the stdout values from the subprocess.
     """
-    cmd = 'python3 '
+    cmd = f'{PYTHON_COMMAND} '
 
     if seed is not None or open_files:
         cmd += f"-c \"fopen=open;"
